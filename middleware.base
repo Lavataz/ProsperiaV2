@@ -1,0 +1,48 @@
+# ============================================================
+# Prosperia V2 — Python dependencies
+# Python 3.13 | Ubuntu 24.04 (WSL) / VPS
+# ============================================================
+
+# --- Core / database ---
+mariadb==1.1.12
+PyMySQL==1.1.1
+
+# --- Config & crypto ---
+cryptography==43.0.3
+python-dotenv==1.0.1
+
+# --- MT5 bridge (rpyc) ---
+rpyc==6.0.1
+plumbum==1.9.0
+
+# --- API (FastAPI — voor VPS; op shared hosting gebruiken we PHP) ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.2
+pydantic-settings==2.6.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.17
+
+# --- HTTP / externe APIs ---
+requests==2.32.3
+httpx==0.28.0
+websockets==14.1
+
+# --- Telegram (listener) ---
+python-telegram-bot==21.9
+
+# --- Logging & monitoring ---
+loguru==0.7.3
+psutil==6.1.0
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+freezegun==1.5.1
+responses==0.25.3
+
+# --- Utilities ---
+pandas==2.2.3
+numpy==2.1.3
