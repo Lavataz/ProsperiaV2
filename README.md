@@ -9,3 +9,11 @@ Modulair trading-systeem met plugin-strategieën, database-gedreven configuratie
 - `installer/` — installatie & migratie
 - `tests/` — unit + integratie
 - `config/` — alleen DB-credentials
+
+## Quick start
+```bash
+cd /opt/ProsperiaV2
+source venv313/bin/activate
+python -m core.engine
+Documentatie
+Zie CHANGELOG.md voor versiehistorie.
