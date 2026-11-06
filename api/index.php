@@ -30,6 +30,7 @@ try {
     require_once __DIR__ . '/routes/auth.php';
     require_once __DIR__ . '/routes/accounts.php';
     require_once __DIR__ . '/routes/strategies.php';
+    require_once __DIR__ . '/routes/status.php';
 
     $pdo = getPDO();
 
@@ -46,6 +47,11 @@ try {
 
     if (in_array($action, ['list', 'save', 'get', 'delete'], true)) {
         strategies_dispatch($pdo, $input);
+        exit;
+    }
+
+    if (in_array($action, ['status_update', 'status_get', 'signals_list'], true)) {
+        status_dispatch($pdo, $input);
         exit;
     }
 

@@ -14,6 +14,7 @@ from core.account_manager import AccountManager
 from core.api_client import ApiError, ProsperiaApiClient
 from core.engine import Engine
 from core.logging_setup import setup_logging
+from core.status_reporter import StatusReporter
 from core.strategy_config import StrategyConfigReader
 from core.strategy_loader import StrategyLoader
 
@@ -54,11 +55,17 @@ def main() -> int:
         poll_interval=float(os.getenv("PROSPERIA_POLL_INTERVAL", 5)),
         config_refresh_interval=float(os.getenv("PROSPERIA_CONFIG_REFRESH_INTERVAL", 30)),
     )
+
+    reporter = StatusReporter(api, engine, interval=60.0)
+    reporter.start()
+
     try:
         engine.start()
     except Exception as e:
         print(f"Fout in de Engine: {e}", file=sys.stderr)
         return 3
+    finally:
+        reporter.stop()
 
     return 0
 
