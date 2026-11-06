@@ -149,16 +149,6 @@
                             <p class="text-xs text-petrol-400 mt-1">Geen actieve trades</p>
                         </div>
                     </div>
-
-                    <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
-                        <svg class="w-16 h-16 mx-auto text-petrol-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
-                        <h3 class="text-lg font-medium text-white mb-2">Welkom bij Prosperia V2</h3>
-                        <p class="text-petrol-300 max-w-md mx-auto">
-                            Dit is je nieuwe trading dashboard. Ga naar <strong>Accounts</strong> om je eerste broker te koppelen.
-                        </p>
-                    </div>
                 </div>
 
                 <!-- Accounts page -->
@@ -199,18 +189,56 @@
                                     </tr>
                                 </template>
                                 <tr x-show="accounts.length === 0">
-                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">
-                                        Nog geen accounts gevonden. Voeg je eerste broker toe.
-                                    </td>
+                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">Nog geen accounts gevonden. Voeg je eerste broker toe.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Placeholder voor andere pagina's -->
-                <div x-show="currentPage !== 'dashboard' && currentPage !== 'accounts'" class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
-                    <p class="text-petrol-300">Deze pagina wordt in de volgende fase gebouwd.</p>
+                <!-- Strategies page -->
+                <div x-show="currentPage === 'strategies'" class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-medium text-white">Actieve Strategieën</h2>
+                        <button @click="openStrategyModal()" class="bg-petrol-500 hover:bg-petrol-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-petrol-500/20 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Nieuwe Strategie
+                        </button>
+                    </div>
+
+                    <div class="bg-petrol-800 rounded-xl border border-petrol-700 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-petrol-900/50 text-petrol-300 text-sm">
+                                    <th class="px-6 py-4 font-medium">Naam</th>
+                                    <th class="px-6 py-4 font-medium">Plugin</th>
+                                    <th class="px-6 py-4 font-medium">Symbol / TF</th>
+                                    <th class="px-6 py-4 font-medium">Account</th>
+                                    <th class="px-6 py-4 font-medium">Status</th>
+                                    <th class="px-6 py-4 font-medium text-right">Actie</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-petrol-700/50">
+                                <template x-for="strat in strategies" :key="strat.id">
+                                    <tr class="hover:bg-petrol-700/20 transition">
+                                        <td class="px-6 py-4 text-white font-medium" x-text="strat.name"></td>
+                                        <td class="px-6 py-4 text-petrol-300 text-sm font-mono" x-text="strat.plugin"></td>
+                                        <td class="px-6 py-4 text-petrol-300 text-sm" x-text="strat.symbol + ' / ' + strat.timeframe"></td>
+                                        <td class="px-6 py-4 text-petrol-400 text-sm" x-text="getAccountName(strat.account_id)"></td>
+                                        <td class="px-6 py-4">
+                                            <span :class="strat.enabled ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border" x-text="strat.enabled ? 'Actief' : 'Inactief'"></span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <button @click="openStrategyModal(strat)" class="text-petrol-400 hover:text-white transition text-sm font-medium">Bewerken</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="strategies.length === 0">
+                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">Nog geen strategieën gevonden.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>
@@ -264,13 +292,99 @@
         </div>
     </div>
 
+    <!-- ============ STRATEGY MODAL ============ -->
+    <div x-show="showStrategyModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showStrategyModal" @click="showStrategyModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            
+            <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-petrol-700">
+                <form @submit.prevent="saveStrategy()">
+                    <div class="px-6 pt-6 pb-4">
+                        <h3 class="text-lg font-medium text-white mb-4" x-text="strategyForm.id ? 'Strategie Bewerken' : 'Nieuwe Strategie Toevoegen'"></h3>
+                        
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Naam</label>
+                                    <input type="text" x-model="strategyForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Account</label>
+                                    <select x-model="strategyForm.account_id" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                        <option value="">Kies een account...</option>
+                                        <template x-for="acc in accounts" :key="acc.id">
+                                            <option :value="acc.id" x-text="acc.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Plugin</label>
+                                    <select x-model="strategyForm.params.plugin" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                        <option value="macd_cross">MACD Cross</option>
+                                        <option value="dummy_strategy">Dummy (Test)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Symbol</label>
+                                    <input type="text" x-model="strategyForm.params.symbol" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Timeframe</label>
+                                    <select x-model="strategyForm.params.timeframe" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                        <option value="M1">M1</option>
+                                        <option value="M5">M5</option>
+                                        <option value="M15">M15</option>
+                                        <option value="M30">M30</option>
+                                        <option value="H1">H1</option>
+                                        <option value="H4">H4</option>
+                                        <option value="D1">D1</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-petrol-700 pt-4 mt-4">
+                                <h4 class="text-sm font-medium text-petrol-300 mb-3">Parameters</h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">Fast Period</label>
+                                        <input type="number" x-model="strategyForm.params.fast" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">Slow Period</label>
+                                        <input type="number" x-model="strategyForm.params.slow" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">Risk %</label>
+                                        <input type="number" step="0.1" x-model="strategyForm.params.risk_percent" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">Max Volume (lot)</label>
+                                        <input type="number" step="0.1" x-model="strategyForm.params.max_volume" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
+                        <button type="button" @click="showStrategyModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">Annuleren</button>
+                        <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg transition shadow-lg shadow-petrol-500/20 disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 <script>
     function app() {
         return {
             // Auth state
             token: localStorage.getItem('prosperia_token') || '',
             userName: localStorage.getItem('prosperia_username') || '',
-            userRole: localStorage.getItem('prosperia_role') || '',
+            userRole: localStorage.getItem('prosperia_role') || 'user',
             username: '',
             password: '',
             loading: false,
@@ -294,15 +408,23 @@
                 return subtitles[this.currentPage] || '';
             },
 
-            // --- ACCOUNT DATA & MODAL STATE ---
+            // --- DATA ---
             accounts: [],
+            strategies: [],
+
+            // --- ACCOUNT MODAL ---
             showAccountModal: false,
-            saving: false,
             accountForm: { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 },
+
+            // --- STRATEGY MODAL ---
+            showStrategyModal: false,
+            strategyForm: { id: null, name: '', account_id: '', params: { plugin: 'macd_cross', symbol: 'EURUSD', timeframe: 'M5', fast: 12, slow: 26, risk_percent: 1, max_volume: 2 } },
+
+            saving: false,
 
             async init() {
                 if (this.token) {
-                    await this.fetchAccounts();
+                    await this.fetchAll();
                 }
             },
 
@@ -320,11 +442,11 @@
                     if (data.token) {
                         this.token = data.token;
                         this.userName = data.username;
-                        this.userRole = data.role;
+                        this.userRole = data.role || 'user';
                         localStorage.setItem('prosperia_token', data.token);
                         localStorage.setItem('prosperia_username', data.username);
                         localStorage.setItem('prosperia_role', data.role || 'user');
-                        await this.fetchAccounts();
+                        await this.fetchAll();
                     } else {
                         this.error = data.error || 'Login mislukt';
                     }
@@ -344,6 +466,15 @@
                 localStorage.removeItem('prosperia_role');
             },
 
+            getAccountName(accountId) {
+                const acc = this.accounts.find(a => a.id === accountId);
+                return acc ? acc.name : 'Onbekend';
+            },
+
+            async fetchAll() {
+                await Promise.all([this.fetchAccounts(), this.fetchStrategies()]);
+            },
+
             async fetchAccounts() {
                 try {
                     const res = await fetch('/prosperia/api/index.php', {
@@ -353,9 +484,19 @@
                     });
                     const data = await res.json();
                     if (data.accounts) this.accounts = data.accounts;
-                } catch (e) {
-                    console.error("Fout bij ophalen accounts:", e);
-                }
+                } catch (e) { console.error("Fout accounts:", e); }
+            },
+
+            async fetchStrategies() {
+                try {
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        body: JSON.stringify({ action: 'list' })
+                    });
+                    const data = await res.json();
+                    if (data.strategies) this.strategies = data.strategies;
+                } catch (e) { console.error("Fout strategies:", e); }
             },
 
             openAccountModal(acc = null) {
@@ -382,11 +523,52 @@
                     } else {
                         alert(data.error || 'Fout bij opslaan');
                     }
-                } catch (e) {
-                    alert('Netwerkfout: ' + e.message);
-                } finally {
-                    this.saving = false;
+                } catch (e) { alert('Netwerkfout: ' + e.message); }
+                finally { this.saving = false; }
+            },
+
+            openStrategyModal(strat = null) {
+                if (strat) {
+                    this.strategyForm = {
+                        id: strat.id,
+                        name: strat.name,
+                        account_id: strat.account_id,
+                        params: { ...strat.params, plugin: strat.plugin, symbol: strat.symbol, timeframe: strat.timeframe }
+                    };
+                } else {
+                    this.strategyForm = {
+                        id: null, name: '', account_id: '',
+                        params: { plugin: 'macd_cross', symbol: 'EURUSD', timeframe: 'M5', fast: 12, slow: 26, risk_percent: 1, max_volume: 2 }
+                    };
                 }
+                this.showStrategyModal = true;
+            },
+
+            async saveStrategy() {
+                this.saving = true;
+                try {
+                    const payload = {
+                        action: 'save',
+                        id: this.strategyForm.id,
+                        name: this.strategyForm.name,
+                        account_id: this.strategyForm.account_id,
+                        is_active: 1,
+                        params: this.strategyForm.params
+                    };
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        this.showStrategyModal = false;
+                        await this.fetchStrategies();
+                    } else {
+                        alert(data.error || 'Fout bij opslaan');
+                    }
+                } catch (e) { alert('Netwerkfout: ' + e.message); }
+                finally { this.saving = false; }
             }
         };
     }
