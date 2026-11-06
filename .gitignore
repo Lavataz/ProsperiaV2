@@ -25,3 +25,5 @@ mt5/*/
 # OS
 .DS_Store
 Thumbs.db
+api/.htaccess
+.env
