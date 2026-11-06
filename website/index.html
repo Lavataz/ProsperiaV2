@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="nl" class="h-full bg-petrol-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prosperia V2 — Trading Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        petrol: {
+                            50: '#f0f9fa',
+                            100: '#d9f0f2',
+                            200: '#b8e1e6',
+                            300: '#8acad4',
+                            400: '#5aacba',
+                            500: '#3d8f9e', // accent (buttons)
+                            600: '#2e7381',
+                            700: '#265e6a',
+                            800: '#0f2f38', // cards
+                            900: '#0a1f27', // background
+                            950: '#051318'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f2f38; }
+        ::-webkit-scrollbar-thumb { background: #265e6a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3d8f9e; }
+    </style>
+</head>
+<body class="h-full text-slate-300 antialiased" x-data="app()" x-cloak>
+
+    <!-- ============ LOGIN SCHERM ============ -->
+    <div x-show="!token" class="h-full flex items-center justify-center px-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-petrol-500 rounded-2xl mb-4 shadow-lg shadow-petrol-500/20">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-white">Prosperia V2</h1>
+                <p class="text-petrol-300 mt-2">Trading Suite</p>
+            </div>
+
+            <div class="bg-petrol-800 rounded-2xl shadow-xl p-8 border border-petrol-700">
+                <form @submit.prevent="login()" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Gebruikersnaam</label>
+                        <input type="text" x-model="username" required autocomplete="username"
+                            class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Wachtwoord</label>
+                        <input type="password" x-model="password" required autocomplete="current-password"
+                            class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500 focus:border-transparent transition">
+                    </div>
+
+                    <div x-show="error" class="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm" x-text="error"></div>
+
+                    <button type="submit" :disabled="loading"
+                        class="w-full bg-petrol-500 hover:bg-petrol-400 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-petrol-500/20">
+                        <span x-show="!loading">Inloggen</span>
+                        <span x-show="loading">Bezig...</span>
+                    </button>
+                </form>
+            </div>
+
+            <p class="text-center text-sm text-petrol-400 mt-6">
+                Nog geen account? Neem contact op met de beheerder.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============ DASHBOARD LAYOUT ============ -->
+    <div x-show="token" class="h-full flex overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside class="w-64 bg-petrol-800 border-r border-petrol-700 flex flex-col">
+            <div class="h-16 flex items-center px-6 border-b border-petrol-700">
+                <div class="w-9 h-9 bg-petrol-500 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-petrol-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <span class="text-white font-bold tracking-tight">Prosperia</span>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1">
+                <template x-for="item in menu" :key="item.id">
+                    <a @click.prevent="currentPage = item.id"
+                       :class="currentPage === item.id ? 'bg-petrol-500/10 text-petrol-400 border-l-2 border-petrol-500' : 'text-slate-400 hover:bg-petrol-700/50 hover:text-white border-l-2 border-transparent'"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition">
+                        <span x-html="item.icon" class="w-5 h-5"></span>
+                        <span class="font-medium" x-text="item.label"></span>
+                    </a>
+                </template>
+            </nav>
+
+            <!-- User info -->
+            <div class="p-4 border-t border-petrol-700">
+                <div class="flex items-center gap-3 px-3 py-2">
+                    <div class="w-9 h-9 rounded-full bg-petrol-500/20 text-petrol-400 flex items-center justify-center font-semibold" x-text="userName.charAt(0).toUpperCase()"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate" x-text="userName"></p>
+                        <p class="text-xs text-petrol-400 capitalize" x-text="userRole"></p>
+                    </div>
+                </div>
+                <button @click="logout()" class="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Uitloggen
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top bar -->
+            <header class="h-16 bg-petrol-800 border-b border-petrol-700 flex items-center justify-between px-8">
+                <div>
+                    <h1 class="text-xl font-semibold text-white" x-text="pageTitle"></h1>
+                    <p class="text-xs text-petrol-400 mt-0.5" x-text="pageSubtitle"></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-petrol-300" x-text="new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"></span>
+                    <div class="w-2 h-2 bg-petrol-400 rounded-full animate-pulse"></div>
+                </div>
+            </header>
+
+            <!-- Page content -->
+            <div class="flex-1 overflow-y-auto p-8">
+
+                <!-- Dashboard page -->
+                <div x-show="currentPage === 'dashboard'" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
+                            <p class="text-sm text-petrol-300">Totaal Saldo</p>
+                            <p class="text-3xl font-bold text-white mt-2">$0.00</p>
+                            <p class="text-xs text-petrol-400 mt-1">Nog geen accounts</p>
+                        </div>
+                        <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
+                            <p class="text-sm text-petrol-300">Actieve Strategieën</p>
+                            <p class="text-3xl font-bold text-white mt-2">0</p>
+                            <p class="text-xs text-petrol-400 mt-1">Momenteel geen</p>
+                        </div>
+                        <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
+                            <p class="text-sm text-petrol-300">Open Posities</p>
+                            <p class="text-3xl font-bold text-white mt-2">0</p>
+                            <p class="text-xs text-petrol-400 mt-1">Geen actieve trades</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
+                        <svg class="w-16 h-16 mx-auto text-petrol-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <h3 class="text-lg font-medium text-white mb-2">Welkom bij Prosperia V2</h3>
+                        <p class="text-petrol-300 max-w-md mx-auto">
+                            Dit is je nieuwe trading dashboard. Ga naar <strong>Accounts</strong> om je eerste broker te koppelen,
+                            of naar <strong>Strategieën</strong> om een trading-strategie te configureren.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Placeholder voor andere pagina's -->
+                <div x-show="currentPage !== 'dashboard'" class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
+                    <p class="text-petrol-300">Deze pagina wordt in de volgende fase gebouwd.</p>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+<script>
+    function app() {
+        return {
+            token: localStorage.getItem('prosperia_token') || '',
+            userName: localStorage.getItem('prosperia_username') || '',
+            userRole: localStorage.getItem('prosperia_role') || '',
+            username: '',
+            password: '',
+            loading: false,
+            error: '',
+
+            currentPage: 'dashboard',
+            menu: [
+                { id: 'dashboard', label: 'Dashboard', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>' },
+                { id: 'accounts', label: 'Accounts', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>' },
+                { id: 'strategies', label: 'Strategieën', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>' },
+                { id: 'signals', label: 'Signalen', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>' },
+            ],
+
+            get pageTitle() {
+                const titles = { dashboard: 'Overzicht', accounts: 'Accounts', strategies: 'Strategieën', signals: 'Signalen' };
+                return titles[this.currentPage] || '';
+            },
+            get pageSubtitle() {
+                const subtitles = { dashboard: 'Real-time status van je trading', accounts: 'Beheer je broker-accounts', strategies: 'Configureer je trading-strategieën', signals: 'Recente signalen en trades' };
+                return subtitles[this.currentPage] || '';
+            },
+
+            async login() {
+                this.error = '';
+                this.loading = true;
+                try {
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'login', username: this.username, password: this.password })
+                    });
+                    const data = await res.json();
+
+                    if (data.token) {
+                        this.token = data.token;
+                        this.userName = data.username;
+                        this.userRole = data.role;
+                        localStorage.setItem('prosperia_token', data.token);
+                        localStorage.setItem('prosperia_username', data.username);
+                        localStorage.setItem('prosperia_role', data.role);
+                    } else {
+                        this.error = data.error || 'Login mislukt';
+                    }
+                } catch (e) {
+                    this.error = 'Netwerkfout: ' + e.message;
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            logout() {
+                this.token = '';
+                this.userName = '';
+                this.userRole = '';
+                localStorage.removeItem('prosperia_token');
+                localStorage.removeItem('prosperia_username');
+                localStorage.removeItem('prosperia_role');
+            }
+        };
+    }
+</script>
+</body>
+</html>
