@@ -1,122 +1,106 @@
 <?php
-// api/routes/strategies.php — strategieën ophalen voor hot-reload
-
 declare(strict_types=1);
-
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/auth.php';
 
-// require_auth zit in auth.php; hier lokaal herhalen om onafhankelijk te blijven
-function strat_json_out(int $status, array $data): void {
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($data);
-    exit;
-}
+function strategies_dispatch(PDO $pdo, array $input): void {
+    $action = $input['action'] ?? null;
 
-function strat_bearer(): ?string {
-    $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-    if (preg_match('/^Bearer\s+(.+)$/i', $h, $m)) return trim($m[1]);
-    return null;
-}
+    switch ($action) {
+        case 'list': {
+            $user = auth_require_user($pdo);
+            if ($user['role'] === 'admin') {
+                $stmt = $pdo->query('SELECT s.id, s.name, s.is_active AS enabled, s.magic_number, s.version, s.account_id FROM prosperia_v2_strategies s WHERE s.is_active = 1 ORDER BY s.id ASC');
+            } else {
+                $stmt = $pdo->prepare('SELECT s.id, s.name, s.is_active AS enabled, s.magic_number, s.version, s.account_id FROM prosperia_v2_strategies s JOIN prosperia_v2_accounts a ON a.id = s.account_id WHERE s.is_active = 1 AND a.user_id = :uid ORDER BY s.id ASC');
+                $stmt->execute([':uid' => $user['user_id']]);
+            }
+            $strategies = $stmt->fetchAll();
 
-function strat_require_auth(PDO $pdo): array {
-    $token = strat_bearer();
-    if (!$token) strat_json_out(401, ['error' => 'Geen token']);
+            $stmt_cfg = $pdo->query('SELECT strategy_id, config_key, config_value FROM prosperia_v2_strategy_configs');
+            $grouped = [];
+            foreach ($stmt_cfg->fetchAll() as $c) {
+                $grouped[$c['strategy_id']][$c['config_key']] = $c['config_value'];
+            }
 
-    $stmt = $pdo->prepare(
-        'SELECT t.user_id, t.expires_at, u.is_active
-         FROM prosperia_v2_tokens t
-         JOIN prosperia_v2_users u ON u.id = t.user_id
-         WHERE t.token = :t LIMIT 1'
-    );
-    $stmt->execute([':t' => $token]);
-    $row = $stmt->fetch();
-    if (!$row) strat_json_out(401, ['error' => 'Token ongeldig']);
-    if (strtotime($row['expires_at']) < time()) strat_json_out(401, ['error' => 'Token verlopen']);
-    if (!(int)$row['is_active']) strat_json_out(403, ['error' => 'Account gedeactiveerd']);
-    return $row;
-}
+            $result = [];
+            foreach ($strategies as $s) {
+                $cfg = $grouped[$s['id']] ?? [];
+                $params = [];
+                foreach ($cfg as $k => $v) {
+                    if (!in_array($k, ['plugin', 'symbol', 'timeframe'])) {
+                        $params[$k] = is_numeric($v) ? (float)$v : $v;
+                    }
+                }
+                $result[] = [
+                    'id' => (int)$s['id'],
+                    'name' => $s['name'],
+                    'plugin' => $cfg['plugin'] ?? 'unknown',
+                    'enabled' => (bool)$s['enabled'],
+                    'symbol' => $cfg['symbol'] ?? '',
+                    'timeframe' => $cfg['timeframe'] ?? '',
+                    'params' => (object)$params,
+                    'account_id' => $s['account_id'] !== null ? (int)$s['account_id'] : null,
+                ];
+            }
+            http_response_code(200);
+            echo json_encode(['strategies' => $result]);
+            exit;
+        }
 
-$pdo = getPDO();
-strat_require_auth($pdo);
+        case 'save': {
+            $user = auth_require_user($pdo);
+            $id = (int)($input['id'] ?? 0);
+            $name = trim((string)($input['name'] ?? ''));
+            $account_id = (int)($input['account_id'] ?? 0);
+            $is_active = isset($input['is_active']) ? (int)$input['is_active'] : 1;
+            $params = $input['params'] ?? [];
 
-$action = $input['action'] ?? null;
+            if ($name === '' || $account_id <= 0) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Naam en account_id zijn verplicht']);
+                exit;
+            }
 
-switch ($action) {
+            if ($user['role'] !== 'admin') {
+                $stmt = $pdo->prepare('SELECT user_id FROM prosperia_v2_accounts WHERE id = :id');
+                $stmt->execute([':id' => $account_id]);
+                if ((int)$stmt->fetchColumn() !== (int)$user['user_id']) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'Account niet van jou']);
+                    exit;
+                }
+            }
 
-case 'list': {
-    $stmt = $pdo->query(
-        'SELECT s.id, s.name, s.is_active AS enabled, s.magic_number, s.version, s.account_id
-         FROM prosperia_v2_strategies s
-         WHERE s.is_active = 1
-         ORDER BY s.id ASC'
-    );
-    $strategies = $stmt->fetchAll();
-
-    $stmt_cfg = $pdo->query(
-        'SELECT strategy_id, config_key, config_value 
-         FROM prosperia_v2_strategy_configs'
-    );
-    $configs = $stmt_cfg->fetchAll();
-
-    $grouped_configs = [];
-    foreach ($configs as $c) {
-        $grouped_configs[$c['strategy_id']][$c['config_key']] = $c['config_value'];
-    }
-
-    $result = [];
-    foreach ($strategies as $s) {
-        $sid = $s['id'];
-        $cfg = $grouped_configs[$sid] ?? [];
-
-        $plugin    = $cfg['plugin'] ?? 'unknown';
-        $symbol    = $cfg['symbol'] ?? '';
-        $timeframe = $cfg['timeframe'] ?? '';
-        
-        $params = [];
-        foreach ($cfg as $key => $val) {
-            if (!in_array($key, ['plugin', 'symbol', 'timeframe'])) {
-                $params[$key] = is_numeric($val) ? (float)$val : $val;
+            $pdo->beginTransaction();
+            try {
+                if ($id > 0) {
+                    $pdo->prepare('UPDATE prosperia_v2_strategies SET name = :n, account_id = :a, is_active = :act WHERE id = :id')
+                        ->execute([':n' => $name, ':a' => $account_id, ':act' => $is_active, ':id' => $id]);
+                } else {
+                    $pdo->prepare('INSERT INTO prosperia_v2_strategies (name, account_id, is_active, magic_number, version) VALUES (:n, :a, :act, :magic, "1.0.0")')
+                        ->execute([':n' => $name, ':a' => $account_id, ':act' => $is_active, ':magic' => rand(1000, 9999)]);
+                    $id = $pdo->lastInsertId();
+                }
+                foreach ($params as $key => $value) {
+                    $pdo->prepare('REPLACE INTO prosperia_v2_strategy_configs (strategy_id, config_key, config_value) VALUES (:sid, :k, :v)')
+                        ->execute([':sid' => $id, ':k' => $key, ':v' => $value]);
+                }
+                $pdo->commit();
+                http_response_code(200);
+                echo json_encode(['ok' => true, 'id' => $id]);
+                exit;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['error' => $e->getMessage()]);
+                exit;
             }
         }
 
-        $result[] = [
-            'id'          => (int)$s['id'],
-            'name'        => $s['name'],
-            'plugin'      => $plugin,
-            'enabled'     => (bool)$s['enabled'],
-            'symbol'      => $symbol,
-            'timeframe'   => $timeframe,
-            'params'      => (object)$params,
-            'account_id'  => $s['account_id'] !== null ? (int)$s['account_id'] : null,
-        ];
+        default:
+            http_response_code(404);
+            echo json_encode(['error' => 'Onbekende strategies-actie: ' . $action]);
+            exit;
     }
-
-    strat_json_out(200, ['strategies' => $result]);
-}
-
-    case 'get': {
-        $id = (int)($input['id'] ?? 0);
-        if ($id <= 0) strat_json_out(400, ['error' => 'id ontbreekt']);
-
-        $stmt = $pdo->prepare(
-            'SELECT id, name, plugin, enabled, symbol, timeframe, params, account_id
-             FROM prosperia_v2_strategies WHERE id = :id'
-        );
-        $stmt->execute([':id' => $id]);
-        $row = $stmt->fetch();
-        if (!$row) strat_json_out(404, ['error' => 'Strategie niet gevonden']);
-
-        if (is_string($row['params'])) {
-            $decoded = json_decode($row['params'], true);
-            $row['params'] = is_array($decoded) ? $decoded : [];
-        }
-        $row['enabled'] = (bool)$row['enabled'];
-        $row['id'] = (int)$row['id'];
-
-        strat_json_out(200, ['strategy' => $row]);
-    }
-
-    default:
-        strat_json_out(404, ['error' => 'Onbekende strategies-actie']);
 }

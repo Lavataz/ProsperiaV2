@@ -11,17 +11,9 @@
                 extend: {
                     colors: {
                         petrol: {
-                            50: '#f0f9fa',
-                            100: '#d9f0f2',
-                            200: '#b8e1e6',
-                            300: '#8acad4',
-                            400: '#5aacba',
-                            500: '#3d8f9e', // accent (buttons)
-                            600: '#2e7381',
-                            700: '#265e6a',
-                            800: '#0f2f38', // cards
-                            900: '#0a1f27', // background
-                            950: '#051318'
+                            50: '#f0f9fa', 100: '#d9f0f2', 200: '#b8e1e6', 300: '#8acad4',
+                            400: '#5aacba', 500: '#3d8f9e', 600: '#2e7381', 700: '#265e6a',
+                            800: '#0f2f38', 900: '#0a1f27', 950: '#051318'
                         }
                     }
                 }
@@ -75,10 +67,6 @@
                     </button>
                 </form>
             </div>
-
-            <p class="text-center text-sm text-petrol-400 mt-6">
-                Nog geen account? Neem contact op met de beheerder.
-            </p>
         </div>
     </div>
 
@@ -168,14 +156,60 @@
                         </svg>
                         <h3 class="text-lg font-medium text-white mb-2">Welkom bij Prosperia V2</h3>
                         <p class="text-petrol-300 max-w-md mx-auto">
-                            Dit is je nieuwe trading dashboard. Ga naar <strong>Accounts</strong> om je eerste broker te koppelen,
-                            of naar <strong>Strategieën</strong> om een trading-strategie te configureren.
+                            Dit is je nieuwe trading dashboard. Ga naar <strong>Accounts</strong> om je eerste broker te koppelen.
                         </p>
                     </div>
                 </div>
 
+                <!-- Accounts page -->
+                <div x-show="currentPage === 'accounts'" class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-medium text-white">Jouw Broker Accounts</h2>
+                        <button @click="openAccountModal()" class="bg-petrol-500 hover:bg-petrol-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-petrol-500/20 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Nieuwe Broker
+                        </button>
+                    </div>
+
+                    <div class="bg-petrol-800 rounded-xl border border-petrol-700 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-petrol-900/50 text-petrol-300 text-sm">
+                                    <th class="px-6 py-4 font-medium">Naam</th>
+                                    <th class="px-6 py-4 font-medium">MT5 Login</th>
+                                    <th class="px-6 py-4 font-medium">Server</th>
+                                    <th class="px-6 py-4 font-medium">Bridge</th>
+                                    <th class="px-6 py-4 font-medium">Status</th>
+                                    <th class="px-6 py-4 font-medium text-right">Actie</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-petrol-700/50">
+                                <template x-for="acc in accounts" :key="acc.id">
+                                    <tr class="hover:bg-petrol-700/20 transition">
+                                        <td class="px-6 py-4 text-white font-medium" x-text="acc.name"></td>
+                                        <td class="px-6 py-4 text-petrol-300 font-mono text-sm" x-text="acc.mt5_login"></td>
+                                        <td class="px-6 py-4 text-petrol-300 text-sm" x-text="acc.mt5_server"></td>
+                                        <td class="px-6 py-4 text-petrol-300 font-mono text-xs" x-text="acc.bridge_host + ':' + acc.bridge_port"></td>
+                                        <td class="px-6 py-4">
+                                            <span :class="acc.enabled ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border" x-text="acc.enabled ? 'Actief' : 'Inactief'"></span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <button @click="openAccountModal(acc)" class="text-petrol-400 hover:text-white transition text-sm font-medium">Bewerken</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="accounts.length === 0">
+                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">
+                                        Nog geen accounts gevonden. Voeg je eerste broker toe.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Placeholder voor andere pagina's -->
-                <div x-show="currentPage !== 'dashboard'" class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
+                <div x-show="currentPage !== 'dashboard' && currentPage !== 'accounts'" class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
                     <p class="text-petrol-300">Deze pagina wordt in de volgende fase gebouwd.</p>
                 </div>
 
@@ -183,9 +217,57 @@
         </main>
     </div>
 
+    <!-- ============ ACCOUNT MODAL ============ -->
+    <div x-show="showAccountModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showAccountModal" @click="showAccountModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            
+            <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-petrol-700">
+                <form @submit.prevent="saveAccount()">
+                    <div class="px-6 pt-6 pb-4">
+                        <h3 class="text-lg font-medium text-white mb-4" x-text="accountForm.id ? 'Broker Bewerken' : 'Nieuwe Broker Toevoegen'"></h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Naam</label>
+                                <input type="text" x-model="accountForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">MT5 Login</label>
+                                    <input type="text" x-model="accountForm.mt5_login" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">MT5 Server</label>
+                                    <input type="text" x-model="accountForm.mt5_server" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Bridge Host (IP)</label>
+                                    <input type="text" x-model="accountForm.bridge_host" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Bridge Poort</label>
+                                    <input type="number" x-model="accountForm.bridge_port" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
+                        <button type="button" @click="showAccountModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">Annuleren</button>
+                        <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg transition shadow-lg shadow-petrol-500/20 disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 <script>
     function app() {
         return {
+            // Auth state
             token: localStorage.getItem('prosperia_token') || '',
             userName: localStorage.getItem('prosperia_username') || '',
             userRole: localStorage.getItem('prosperia_role') || '',
@@ -194,6 +276,7 @@
             loading: false,
             error: '',
 
+            // Navigation
             currentPage: 'dashboard',
             menu: [
                 { id: 'dashboard', label: 'Dashboard', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>' },
@@ -209,6 +292,18 @@
             get pageSubtitle() {
                 const subtitles = { dashboard: 'Real-time status van je trading', accounts: 'Beheer je broker-accounts', strategies: 'Configureer je trading-strategieën', signals: 'Recente signalen en trades' };
                 return subtitles[this.currentPage] || '';
+            },
+
+            // --- ACCOUNT DATA & MODAL STATE ---
+            accounts: [],
+            showAccountModal: false,
+            saving: false,
+            accountForm: { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 },
+
+            async init() {
+                if (this.token) {
+                    await this.fetchAccounts();
+                }
             },
 
             async login() {
@@ -228,7 +323,8 @@
                         this.userRole = data.role;
                         localStorage.setItem('prosperia_token', data.token);
                         localStorage.setItem('prosperia_username', data.username);
-                        localStorage.setItem('prosperia_role', data.role);
+                        localStorage.setItem('prosperia_role', data.role || 'user');
+                        await this.fetchAccounts();
                     } else {
                         this.error = data.error || 'Login mislukt';
                     }
@@ -246,6 +342,51 @@
                 localStorage.removeItem('prosperia_token');
                 localStorage.removeItem('prosperia_username');
                 localStorage.removeItem('prosperia_role');
+            },
+
+            async fetchAccounts() {
+                try {
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        body: JSON.stringify({ action: 'accounts_list' })
+                    });
+                    const data = await res.json();
+                    if (data.accounts) this.accounts = data.accounts;
+                } catch (e) {
+                    console.error("Fout bij ophalen accounts:", e);
+                }
+            },
+
+            openAccountModal(acc = null) {
+                if (acc) {
+                    this.accountForm = { ...acc };
+                } else {
+                    this.accountForm = { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 };
+                }
+                this.showAccountModal = true;
+            },
+
+            async saveAccount() {
+                this.saving = true;
+                try {
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        body: JSON.stringify({ action: 'accounts_save', ...this.accountForm })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        this.showAccountModal = false;
+                        await this.fetchAccounts();
+                    } else {
+                        alert(data.error || 'Fout bij opslaan');
+                    }
+                } catch (e) {
+                    alert('Netwerkfout: ' + e.message);
+                } finally {
+                    this.saving = false;
+                }
             }
         };
     }

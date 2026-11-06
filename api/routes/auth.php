@@ -1,33 +1,26 @@
 <?php
-// api/routes/auth.php — login, refresh, logout, me
-
 declare(strict_types=1);
-
 require_once __DIR__ . '/../config/database.php';
 
-function json_out(int $status, array $data): void {
+function auth_json_out(int $status, array $data): void {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data);
     exit;
 }
 
-function bearer_token(): ?string {
+function auth_bearer(): ?string {
     $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-    if (preg_match('/^Bearer\s+(.+)$/i', $h, $m)) {
-        return trim($m[1]);
-    }
+    if (preg_match('/^Bearer\s+(.+)$/i', $h, $m)) return trim($m[1]);
     return null;
 }
 
-function require_auth(PDO $pdo): array {
-    $token = bearer_token();
-    if (!$token) {
-        json_out(401, ['error' => 'Geen token']);
-    }
+function auth_require_user(PDO $pdo, array $allowed_roles = ['admin', 'trader', 'viewer']): array {
+    $token = auth_bearer();
+    if (!$token) auth_json_out(401, ['error' => 'Geen token']);
 
     $stmt = $pdo->prepare(
-        'SELECT t.user_id, t.expires_at, u.username, u.is_active
+        'SELECT t.user_id, t.expires_at, u.username, u.role, u.is_active, u.is_approved
          FROM prosperia_v2_tokens t
          JOIN prosperia_v2_users u ON u.id = t.user_id
          WHERE t.token = :t LIMIT 1'
@@ -35,101 +28,105 @@ function require_auth(PDO $pdo): array {
     $stmt->execute([':t' => $token]);
     $row = $stmt->fetch();
 
-    if (!$row) {
-        json_out(401, ['error' => 'Token ongeldig']);
-    }
-    if (strtotime($row['expires_at']) < time()) {
-        json_out(401, ['error' => 'Token verlopen']);
-    }
-    if (!(int)$row['is_active']) {
-        json_out(403, ['error' => 'Account gedeactiveerd']);
-    }
+    if (!$row) auth_json_out(401, ['error' => 'Token ongeldig']);
+    if (strtotime($row['expires_at']) < time()) auth_json_out(401, ['error' => 'Token verlopen']);
+    if (!(int)$row['is_active']) auth_json_out(403, ['error' => 'Account gedeactiveerd']);
+    if (!(int)$row['is_approved']) auth_json_out(403, ['error' => 'Account wacht op goedkeuring']);
+    if (!in_array($row['role'], $allowed_roles, true)) auth_json_out(403, ['error' => 'Onvoldoende rechten']);
     return $row;
 }
 
-// ---- Acties --------------------------------------------------------------
-$action = $input['action'] ?? null;
-$pdo = getPDO();
+function auth_dispatch(PDO $pdo, array $input): void {
+    $action = $input['action'] ?? null;
 
-switch ($action) {
+    switch ($action) {
+        case 'login': {
+            $username = trim((string)($input['username'] ?? ''));
+            $password = (string)($input['password'] ?? '');
+            if ($username === '' || $password === '') auth_json_out(400, ['error' => 'username en password verplicht']);
 
-    case 'login': {
-        $username = trim((string)($input['username'] ?? ''));
-        $password = (string)($input['password'] ?? '');
+            $stmt = $pdo->prepare(
+                'SELECT id, username, password_hash, is_active, is_approved, role
+                 FROM prosperia_v2_users WHERE username = :u1 OR email = :u2 LIMIT 1'
+            );
+            $stmt->execute([':u1' => $username, ':u2' => $username]);
+            $user = $stmt->fetch();
 
-        if ($username === '' || $password === '') {
-            json_out(400, ['error' => 'username en password zijn verplicht']);
+            if (!$user || !password_verify($password, $user['password_hash'])) auth_json_out(401, ['error' => 'Ongeldige inloggegevens']);
+            if (!(int)$user['is_active']) auth_json_out(403, ['error' => 'Account gedeactiveerd']);
+            if (!(int)$user['is_approved']) auth_json_out(403, ['error' => 'Wacht op goedkeuring']);
+
+            $token = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', time() + 3600);
+            $pdo->prepare('INSERT INTO prosperia_v2_tokens (user_id, token, expires_at, created_at) VALUES (:uid, :tok, :exp, NOW())')
+                ->execute([':uid' => $user['id'], ':tok' => $token, ':exp' => $expiresAt]);
+            $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE expires_at < NOW()')->execute();
+
+            auth_json_out(200, [
+                'token' => $token,
+                'expires_in' => 3600,
+                'username' => $user['username'],
+                'role' => $user['role'],
+            ]);
         }
 
-        // username of email
-        $stmt = $pdo->prepare(
-            'SELECT id, username, password_hash, is_active
-             FROM prosperia_v2_users
-             WHERE username = :u OR email = :u LIMIT 1'
-        );
-        $stmt->execute([':u' => $username]);
-        $user = $stmt->fetch();
-
-        if (!$user || !password_verify($password, $user['password_hash'])) {
-            // Bewust generieke fout (geen user-enumeratie)
-            json_out(401, ['error' => 'Ongeldige inloggegevens']);
-        }
-        if (!(int)$user['is_active']) {
-            json_out(403, ['error' => 'Account gedeactiveerd']);
+        case 'register': {
+            $u = trim((string)($input['username'] ?? ''));
+            $e = trim((string)($input['email'] ?? ''));
+            $p = (string)($input['password'] ?? '');
+            if (strlen($u) < 3 || strlen($p) < 6 || !filter_var($e, FILTER_VALIDATE_EMAIL)) auth_json_out(400, ['error' => 'Ongeldige invoer']);
+            $stmt = $pdo->prepare('SELECT id FROM prosperia_v2_users WHERE username = :u OR email = :e');
+            $stmt->execute([':u' => $u, ':e' => $e]);
+            if ($stmt->fetch()) auth_json_out(409, ['error' => 'Gebruikersnaam of email bestaat al']);
+            $pdo->prepare('INSERT INTO prosperia_v2_users (username, email, password_hash, is_active, is_approved, role, created_at) VALUES (:u, :e, :h, 1, 0, "viewer", NOW())')
+                ->execute([':u' => $u, ':e' => $e, ':h' => password_hash($p, PASSWORD_BCRYPT)]);
+            auth_json_out(201, ['ok' => true, 'message' => 'Wacht op goedkeuring']);
         }
 
-        // Nieuw token genereren
-        $token = bin2hex(random_bytes(32));   // 64 hex chars
-        $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
-
-        $ins = $pdo->prepare(
-            'INSERT INTO prosperia_v2_tokens (user_id, token, expires_at, created_at)
-             VALUES (:uid, :tok, :exp, NOW())'
-        );
-        $ins->execute([':uid' => $user['id'], ':tok' => $token, ':exp' => $expiresAt]);
-
-        // Oude tokens opruimen
-        $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE expires_at < NOW()')->execute();
-
-        json_out(200, [
-            'token'      => $token,
-            'expires_in' => 3600,
-            'username'   => $user['username'],
-        ]);
-    }
-
-    case 'refresh': {
-        $row = require_auth($pdo);
-        $newToken = bin2hex(random_bytes(32));
-        $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
-
-        $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE user_id = :uid')
-            ->execute([':uid' => $row['user_id']]);
-        $pdo->prepare(
-            'INSERT INTO prosperia_v2_tokens (user_id, token, expires_at, created_at)
-             VALUES (:uid, :tok, :exp, NOW())'
-        )->execute([':uid' => $row['user_id'], ':tok' => $newToken, ':exp' => $expiresAt]);
-
-        json_out(200, ['token' => $newToken, 'expires_in' => 3600]);
-    }
-
-    case 'logout': {
-        $token = bearer_token();
-        if ($token) {
-            $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE token = :t')
-                ->execute([':t' => $token]);
+        case 'logout': {
+            $t = auth_bearer();
+            if ($t) $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE token = :t')->execute([':t' => $t]);
+            auth_json_out(200, ['ok' => true]);
         }
-        json_out(200, ['ok' => true]);
-    }
 
-    case 'me': {
-        $row = require_auth($pdo);
-        json_out(200, [
-            'user_id'  => (int)$row['user_id'],
-            'username' => $row['username'],
-        ]);
-    }
+        case 'me': {
+            $r = auth_require_user($pdo);
+            auth_json_out(200, ['user_id' => (int)$r['user_id'], 'username' => $r['username'], 'role' => $r['role']]);
+        }
 
-    default:
-        json_out(404, ['error' => 'Onbekende auth-actie']);
+        case 'admin_list_users': {
+            auth_require_user($pdo, ['admin']);
+            $stmt = $pdo->query('SELECT id, username, email, role, is_active, is_approved, created_at FROM prosperia_v2_users ORDER BY created_at DESC');
+            auth_json_out(200, ['users' => $stmt->fetchAll()]);
+        }
+
+        case 'admin_approve_user': {
+            auth_require_user($pdo, ['admin']);
+            $id = (int)($input['user_id'] ?? 0);
+            if ($id <= 0) auth_json_out(400, ['error' => 'ID ontbreekt']);
+            $pdo->prepare('UPDATE prosperia_v2_users SET is_approved = 1 WHERE id = :id')->execute([':id' => $id]);
+            auth_json_out(200, ['ok' => true]);
+        }
+
+        case 'admin_promote_user': {
+            auth_require_user($pdo, ['admin']);
+            $id = (int)($input['user_id'] ?? 0);
+            $r = (string)($input['role'] ?? '');
+            if ($id <= 0 || !in_array($r, ['admin', 'trader', 'viewer'], true)) auth_json_out(400, ['error' => 'Ongeldig']);
+            $pdo->prepare('UPDATE prosperia_v2_users SET role = :r WHERE id = :id')->execute([':r' => $r, ':id' => $id]);
+            auth_json_out(200, ['ok' => true]);
+        }
+
+        case 'admin_deactivate_user': {
+            auth_require_user($pdo, ['admin']);
+            $id = (int)($input['user_id'] ?? 0);
+            if ($id <= 0) auth_json_out(400, ['error' => 'ID ontbreekt']);
+            $pdo->prepare('UPDATE prosperia_v2_users SET is_active = 0 WHERE id = :id')->execute([':id' => $id]);
+            $pdo->prepare('DELETE FROM prosperia_v2_tokens WHERE user_id = :id')->execute([':id' => $id]);
+            auth_json_out(200, ['ok' => true]);
+        }
+
+        default:
+            auth_json_out(404, ['error' => 'Onbekende auth-actie: ' . $action]);
+    }
 }
