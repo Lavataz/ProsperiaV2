@@ -30,9 +30,10 @@
         ::-webkit-scrollbar-thumb:hover { background: #3d8f9e; }
     </style>
 </head>
-<body class="h-full text-slate-300 antialiased" x-data="app()" x-cloak>
+<!-- LET OP: x-init="init(); startPolling()" is de fix voor het automatisch laden -->
+<body class="h-full text-slate-300 antialiased" x-data="app()" x-init="init(); startPolling()" x-cloak>
 
-    <!-- ============ LOGIN SCHERM ============ -->
+    <!-- LOGIN -->
     <div x-show="!token" class="h-full flex items-center justify-center px-4">
         <div class="w-full max-w-md">
             <div class="text-center mb-8">
@@ -49,19 +50,14 @@
                 <form @submit.prevent="login()" class="space-y-5">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Gebruikersnaam</label>
-                        <input type="text" x-model="username" required autocomplete="username"
-                            class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500 focus:border-transparent transition">
+                        <input type="text" x-model="username" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Wachtwoord</label>
-                        <input type="password" x-model="password" required autocomplete="current-password"
-                            class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500 focus:border-transparent transition">
+                        <input type="password" x-model="password" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol-500">
                     </div>
-
                     <div x-show="error" class="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm" x-text="error"></div>
-
-                    <button type="submit" :disabled="loading"
-                        class="w-full bg-petrol-500 hover:bg-petrol-400 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-petrol-500/20">
+                    <button type="submit" :disabled="loading" class="w-full bg-petrol-500 hover:bg-petrol-400 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-petrol-500/20">
                         <span x-show="!loading">Inloggen</span>
                         <span x-show="loading">Bezig...</span>
                     </button>
@@ -70,7 +66,7 @@
         </div>
     </div>
 
-    <!-- ============ DASHBOARD LAYOUT ============ -->
+    <!-- DASHBOARD -->
     <div x-show="token" class="h-full flex overflow-hidden">
 
         <!-- Sidebar -->
@@ -95,27 +91,23 @@
                 </template>
             </nav>
 
-            <!-- User info -->
             <div class="p-4 border-t border-petrol-700">
                 <div class="flex items-center gap-3 px-3 py-2">
                     <div class="w-9 h-9 rounded-full bg-petrol-500/20 text-petrol-400 flex items-center justify-center font-semibold" x-text="userName.charAt(0).toUpperCase()"></div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-white truncate" x-text="userName"></p>
-                        <p class="text-xs text-petrol-400 capitalize" x-text="userRole"></p>
+                        <p class="text-xs text-petrol-400 capitalize" x-text="userRole || 'user'"></p>
                     </div>
                 </div>
                 <button @click="logout()" class="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                    </svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     Uitloggen
                 </button>
             </div>
         </aside>
 
-        <!-- Main content -->
+        <!-- Main -->
         <main class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top bar -->
             <header class="h-16 bg-petrol-800 border-b border-petrol-700 flex items-center justify-between px-8">
                 <div>
                     <h1 class="text-xl font-semibold text-white" x-text="pageTitle"></h1>
@@ -123,35 +115,52 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-petrol-300" x-text="new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"></span>
-                    <div class="w-2 h-2 bg-petrol-400 rounded-full animate-pulse"></div>
+                    <div class="w-2 h-2 rounded-full animate-pulse" :class="botStatus.is_running ? 'bg-green-400' : 'bg-red-400'"></div>
                 </div>
             </header>
 
-            <!-- Page content -->
             <div class="flex-1 overflow-y-auto p-8">
 
-                <!-- Dashboard page -->
+                <!-- Dashboard Page -->
                 <div x-show="currentPage === 'dashboard'" class="space-y-6">
+                    
+                    <!-- Bot Status Banner -->
+                    <div class="rounded-xl border p-6 flex items-center justify-between"
+                         :class="botStatus.is_running ? 'bg-green-500/5 border-green-500/30' : 'bg-red-500/5 border-red-500/30'">
+                        <div class="flex items-center gap-4">
+                            <div class="w-3 h-3 rounded-full animate-pulse" :class="botStatus.is_running ? 'bg-green-400' : 'bg-red-400'"></div>
+                            <div>
+                                <p class="text-white font-medium" x-text="botStatus.is_running ? 'Bot is online' : 'Bot is offline'"></p>
+                                <p class="text-sm text-petrol-300" x-text="botStatus.is_running ? 'Hartslag ontvangen ' + formatTime(botStatus.last_heartbeat) : 'Geen hartslag ontvangen'"></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-petrol-400">Laatste update</p>
+                            <p class="text-sm text-white" x-text="lastRefreshTime || '—'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
                             <p class="text-sm text-petrol-300">Totaal Saldo</p>
-                            <p class="text-3xl font-bold text-white mt-2">$0.00</p>
-                            <p class="text-xs text-petrol-400 mt-1">Nog geen accounts</p>
+                            <p class="text-3xl font-bold text-white mt-2" x-text="botStatus.account_balance !== null ? '$' + botStatus.account_balance.toFixed(2) : '$0.00'"></p>
+                            <p class="text-xs text-petrol-400 mt-1" x-text="botStatus.account_balance !== null ? 'Live van broker' : 'Geen data'"></p>
                         </div>
                         <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
                             <p class="text-sm text-petrol-300">Actieve Strategieën</p>
-                            <p class="text-3xl font-bold text-white mt-2">0</p>
-                            <p class="text-xs text-petrol-400 mt-1">Momenteel geen</p>
+                            <p class="text-3xl font-bold text-white mt-2" x-text="botStatus.active_strategies || 0"></p>
+                            <p class="text-xs text-petrol-400 mt-1">Momenteel actief</p>
                         </div>
                         <div class="bg-petrol-800 rounded-xl border border-petrol-700 p-6">
                             <p class="text-sm text-petrol-300">Open Posities</p>
-                            <p class="text-3xl font-bold text-white mt-2">0</p>
-                            <p class="text-xs text-petrol-400 mt-1">Geen actieve trades</p>
+                            <p class="text-3xl font-bold text-white mt-2" x-text="botStatus.open_positions || 0"></p>
+                            <p class="text-xs text-petrol-400 mt-1">Trades in de markt</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Accounts page -->
+                <!-- Accounts Page -->
                 <div x-show="currentPage === 'accounts'" class="space-y-6">
                     <div class="flex justify-between items-center">
                         <h2 class="text-lg font-medium text-white">Jouw Broker Accounts</h2>
@@ -160,7 +169,6 @@
                             Nieuwe Broker
                         </button>
                     </div>
-
                     <div class="bg-petrol-800 rounded-xl border border-petrol-700 overflow-hidden">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -189,14 +197,14 @@
                                     </tr>
                                 </template>
                                 <tr x-show="accounts.length === 0">
-                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">Nog geen accounts gevonden. Voeg je eerste broker toe.</td>
+                                    <td colspan="6" class="px-6 py-12 text-center text-petrol-400">Nog geen accounts gevonden.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Strategies page -->
+                <!-- Strategies Page -->
                 <div x-show="currentPage === 'strategies'" class="space-y-6">
                     <div class="flex justify-between items-center">
                         <h2 class="text-lg font-medium text-white">Actieve Strategieën</h2>
@@ -205,7 +213,6 @@
                             Nieuwe Strategie
                         </button>
                     </div>
-
                     <div class="bg-petrol-800 rounded-xl border border-petrol-700 overflow-hidden">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -241,154 +248,24 @@
                     </div>
                 </div>
 
+                <!-- Signals Page (placeholder) -->
+                <div x-show="currentPage === 'signals'" class="bg-petrol-800 rounded-xl border border-petrol-700 p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-petrol-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <p class="text-petrol-300">Deze pagina wordt in de volgende fase gevuld met live signalen.</p>
+                </div>
+
             </div>
         </main>
-    </div>
-
-    <!-- ============ ACCOUNT MODAL ============ -->
-    <div x-show="showAccountModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="showAccountModal" @click="showAccountModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-            
-            <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-petrol-700">
-                <form @submit.prevent="saveAccount()">
-                    <div class="px-6 pt-6 pb-4">
-                        <h3 class="text-lg font-medium text-white mb-4" x-text="accountForm.id ? 'Broker Bewerken' : 'Nieuwe Broker Toevoegen'"></h3>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300 mb-1">Naam</label>
-                                <input type="text" x-model="accountForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">MT5 Login</label>
-                                    <input type="text" x-model="accountForm.mt5_login" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">MT5 Server</label>
-                                    <input type="text" x-model="accountForm.mt5_server" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Bridge Host (IP)</label>
-                                    <input type="text" x-model="accountForm.bridge_host" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Bridge Poort</label>
-                                    <input type="number" x-model="accountForm.bridge_port" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
-                        <button type="button" @click="showAccountModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">Annuleren</button>
-                        <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg transition shadow-lg shadow-petrol-500/20 disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============ STRATEGY MODAL ============ -->
-    <div x-show="showStrategyModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="showStrategyModal" @click="showStrategyModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-            
-            <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-petrol-700">
-                <form @submit.prevent="saveStrategy()">
-                    <div class="px-6 pt-6 pb-4">
-                        <h3 class="text-lg font-medium text-white mb-4" x-text="strategyForm.id ? 'Strategie Bewerken' : 'Nieuwe Strategie Toevoegen'"></h3>
-                        
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Naam</label>
-                                    <input type="text" x-model="strategyForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Account</label>
-                                    <select x-model="strategyForm.account_id" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                        <option value="">Kies een account...</option>
-                                        <template x-for="acc in accounts" :key="acc.id">
-                                            <option :value="acc.id" x-text="acc.name"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Plugin</label>
-                                    <select x-model="strategyForm.params.plugin" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                        <option value="macd_cross">MACD Cross</option>
-                                        <option value="dummy_strategy">Dummy (Test)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Symbol</label>
-                                    <input type="text" x-model="strategyForm.params.symbol" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Timeframe</label>
-                                    <select x-model="strategyForm.params.timeframe" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                        <option value="M1">M1</option>
-                                        <option value="M5">M5</option>
-                                        <option value="M15">M15</option>
-                                        <option value="M30">M30</option>
-                                        <option value="H1">H1</option>
-                                        <option value="H4">H4</option>
-                                        <option value="D1">D1</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-petrol-700 pt-4 mt-4">
-                                <h4 class="text-sm font-medium text-petrol-300 mb-3">Parameters</h4>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs text-slate-400 mb-1">Fast Period</label>
-                                        <input type="number" x-model="strategyForm.params.fast" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 mb-1">Slow Period</label>
-                                        <input type="number" x-model="strategyForm.params.slow" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 mb-1">Risk %</label>
-                                        <input type="number" step="0.1" x-model="strategyForm.params.risk_percent" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 mb-1">Max Volume (lot)</label>
-                                        <input type="number" step="0.1" x-model="strategyForm.params.max_volume" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg focus:ring-petrol-500 focus:border-petrol-500">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
-                        <button type="button" @click="showStrategyModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">Annuleren</button>
-                        <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg transition shadow-lg shadow-petrol-500/20 disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 
 <script>
     function app() {
         return {
-            // Auth state
+            // Auth
             token: localStorage.getItem('prosperia_token') || '',
             userName: localStorage.getItem('prosperia_username') || '',
             userRole: localStorage.getItem('prosperia_role') || 'user',
-            username: '',
-            password: '',
-            loading: false,
-            error: '',
+            username: '', password: '', loading: false, error: '',
 
             // Navigation
             currentPage: 'dashboard',
@@ -400,49 +277,41 @@
             ],
 
             get pageTitle() {
-                const titles = { dashboard: 'Overzicht', accounts: 'Accounts', strategies: 'Strategieën', signals: 'Signalen' };
-                return titles[this.currentPage] || '';
+                const t = { dashboard: 'Overzicht', accounts: 'Accounts', strategies: 'Strategieën', signals: 'Signalen' };
+                return t[this.currentPage] || '';
             },
             get pageSubtitle() {
-                const subtitles = { dashboard: 'Real-time status van je trading', accounts: 'Beheer je broker-accounts', strategies: 'Configureer je trading-strategieën', signals: 'Recente signalen en trades' };
-                return subtitles[this.currentPage] || '';
+                const s = { dashboard: 'Real-time status van je trading', accounts: 'Beheer je broker-accounts', strategies: 'Configureer je trading-strategieën', signals: 'Recente signalen en trades' };
+                return s[this.currentPage] || '';
             },
 
-            // --- DATA ---
+            // Data
             accounts: [],
             strategies: [],
+            botStatus: { is_running: false, active_strategies: 0, open_positions: 0, account_balance: null, account_equity: null, last_heartbeat: null },
+            lastRefreshTime: '',
 
-            // --- ACCOUNT MODAL ---
+            // Modals
             showAccountModal: false,
             accountForm: { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 },
-
-            // --- STRATEGY MODAL ---
             showStrategyModal: false,
             strategyForm: { id: null, name: '', account_id: '', params: { plugin: 'macd_cross', symbol: 'EURUSD', timeframe: 'M5', fast: 12, slow: 26, risk_percent: 1, max_volume: 2 } },
-
             saving: false,
 
             async init() {
-                if (this.token) {
-                    await this.fetchAll();
-                }
+                if (this.token) await this.fetchAll();
             },
 
             async login() {
-                this.error = '';
-                this.loading = true;
+                this.error = ''; this.loading = true;
                 try {
                     const res = await fetch('/prosperia/api/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'login', username: this.username, password: this.password })
                     });
                     const data = await res.json();
-
                     if (data.token) {
-                        this.token = data.token;
-                        this.userName = data.username;
-                        this.userRole = data.role || 'user';
+                        this.token = data.token; this.userName = data.username; this.userRole = data.role || 'user';
                         localStorage.setItem('prosperia_token', data.token);
                         localStorage.setItem('prosperia_username', data.username);
                         localStorage.setItem('prosperia_role', data.role || 'user');
@@ -450,61 +319,98 @@
                     } else {
                         this.error = data.error || 'Login mislukt';
                     }
-                } catch (e) {
-                    this.error = 'Netwerkfout: ' + e.message;
-                } finally {
-                    this.loading = false;
-                }
+                } catch (e) { this.error = 'Netwerkfout: ' + e.message; }
+                finally { this.loading = false; }
             },
 
             logout() {
-                this.token = '';
-                this.userName = '';
-                this.userRole = '';
+                this.token = ''; this.userName = ''; this.userRole = '';
                 localStorage.removeItem('prosperia_token');
                 localStorage.removeItem('prosperia_username');
                 localStorage.removeItem('prosperia_role');
             },
 
-            getAccountName(accountId) {
-                const acc = this.accounts.find(a => a.id === accountId);
-                return acc ? acc.name : 'Onbekend';
-            },
-
             async fetchAll() {
-                await Promise.all([this.fetchAccounts(), this.fetchStrategies()]);
+                await Promise.all([this.fetchAccounts(), this.fetchStrategies(), this.fetchStatus()]);
+                this.lastRefreshTime = new Date().toLocaleTimeString('nl-NL');
             },
 
             async fetchAccounts() {
                 try {
                     const res = await fetch('/prosperia/api/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
                         body: JSON.stringify({ action: 'accounts_list' })
                     });
+                    if (res.status === 401) { this.logout(); return; }
                     const data = await res.json();
                     if (data.accounts) this.accounts = data.accounts;
-                } catch (e) { console.error("Fout accounts:", e); }
+                } catch (e) { console.error(e); }
             },
 
             async fetchStrategies() {
                 try {
                     const res = await fetch('/prosperia/api/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
                         body: JSON.stringify({ action: 'list' })
                     });
+                    if (res.status === 401) { this.logout(); return; }
                     const data = await res.json();
                     if (data.strategies) this.strategies = data.strategies;
-                } catch (e) { console.error("Fout strategies:", e); }
+                } catch (e) { console.error(e); }
+            },
+
+            async fetchStatus() {
+                try {
+                    const res = await fetch('/prosperia/api/index.php', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        body: JSON.stringify({ action: 'status_get' })
+                    });
+                    if (res.status === 401) { this.logout(); return; }
+                    const data = await res.json();
+                    if (data.status) {
+                        // FIX: Tijdzone-correctie voor de heartbeat
+                        const heartbeat = new Date(data.status.last_heartbeat.replace(' ', 'T') + 'Z');
+                        const now = new Date();
+                        const secondsAgo = Math.floor((now - heartbeat) / 1000);
+                        
+                        // Bot is online als de laatste heartbeat minder dan 120 seconden geleden is
+                        data.status.is_running = secondsAgo < 120;
+                        
+                        this.botStatus = data.status;
+                    } else {
+                        this.botStatus = { is_running: false, active_strategies: 0, open_positions: 0, account_balance: null, account_equity: null, last_heartbeat: null };
+                    }
+                } catch (e) { console.error(e); }
+            },
+
+            startPolling() {
+                setInterval(() => {
+                    if (this.token) {
+                        this.fetchStatus();
+                        this.lastRefreshTime = new Date().toLocaleTimeString('nl-NL');
+                    }
+                }, 30000);  // Elke 30 seconden
+            },
+
+            getAccountName(id) {
+                const acc = this.accounts.find(a => a.id === id);
+                return acc ? acc.name : 'Onbekend';
+            },
+
+            formatTime(iso) {
+                if (!iso) return '—';
+                try {
+                    const d = new Date(iso.replace(' ', 'T') + 'Z');
+                    const diff = Math.floor((new Date() - d) / 1000);
+                    if (diff < 60) return diff + ' seconden geleden';
+                    if (diff < 3600) return Math.floor(diff / 60) + ' minuten geleden';
+                    return d.toLocaleTimeString('nl-NL');
+                } catch (e) { return iso; }
             },
 
             openAccountModal(acc = null) {
-                if (acc) {
-                    this.accountForm = { ...acc };
-                } else {
-                    this.accountForm = { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 };
-                }
+                if (acc) this.accountForm = { ...acc };
+                else this.accountForm = { id: null, name: '', mt5_login: '', mt5_server: '', bridge_host: '192.168.2.196', bridge_port: 18812 };
                 this.showAccountModal = true;
             },
 
@@ -512,34 +418,24 @@
                 this.saving = true;
                 try {
                     const res = await fetch('/prosperia/api/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
                         body: JSON.stringify({ action: 'accounts_save', ...this.accountForm })
                     });
                     const data = await res.json();
-                    if (data.ok) {
-                        this.showAccountModal = false;
-                        await this.fetchAccounts();
-                    } else {
-                        alert(data.error || 'Fout bij opslaan');
-                    }
-                } catch (e) { alert('Netwerkfout: ' + e.message); }
+                    if (data.ok) { this.showAccountModal = false; await this.fetchAccounts(); }
+                    else alert(data.error || 'Fout');
+                } catch (e) { alert(e.message); }
                 finally { this.saving = false; }
             },
 
             openStrategyModal(strat = null) {
                 if (strat) {
                     this.strategyForm = {
-                        id: strat.id,
-                        name: strat.name,
-                        account_id: strat.account_id,
+                        id: strat.id, name: strat.name, account_id: strat.account_id,
                         params: { ...strat.params, plugin: strat.plugin, symbol: strat.symbol, timeframe: strat.timeframe }
                     };
                 } else {
-                    this.strategyForm = {
-                        id: null, name: '', account_id: '',
-                        params: { plugin: 'macd_cross', symbol: 'EURUSD', timeframe: 'M5', fast: 12, slow: 26, risk_percent: 1, max_volume: 2 }
-                    };
+                    this.strategyForm = { id: null, name: '', account_id: '', params: { plugin: 'macd_cross', symbol: 'EURUSD', timeframe: 'M5', fast: 12, slow: 26, risk_percent: 1, max_volume: 2 } };
                 }
                 this.showStrategyModal = true;
             },
@@ -547,31 +443,106 @@
             async saveStrategy() {
                 this.saving = true;
                 try {
-                    const payload = {
-                        action: 'save',
-                        id: this.strategyForm.id,
-                        name: this.strategyForm.name,
-                        account_id: this.strategyForm.account_id,
-                        is_active: 1,
-                        params: this.strategyForm.params
-                    };
+                    const payload = { action: 'save', id: this.strategyForm.id, name: this.strategyForm.name, account_id: this.strategyForm.account_id, is_active: 1, params: this.strategyForm.params };
                     const res = await fetch('/prosperia/api/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
                         body: JSON.stringify(payload)
                     });
                     const data = await res.json();
-                    if (data.ok) {
-                        this.showStrategyModal = false;
-                        await this.fetchStrategies();
-                    } else {
-                        alert(data.error || 'Fout bij opslaan');
-                    }
-                } catch (e) { alert('Netwerkfout: ' + e.message); }
+                    if (data.ok) { this.showStrategyModal = false; await this.fetchStrategies(); }
+                    else alert(data.error || 'Fout');
+                } catch (e) { alert(e.message); }
                 finally { this.saving = false; }
             }
         };
     }
 </script>
+
+<!-- Account Modal -->
+<div x-show="showAccountModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div x-show="showAccountModal" @click="showAccountModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-petrol-700">
+            <form @submit.prevent="saveAccount()">
+                <div class="px-6 pt-6 pb-4">
+                    <h3 class="text-lg font-medium text-white mb-4" x-text="accountForm.id ? 'Broker Bewerken' : 'Nieuwe Broker Toevoegen'"></h3>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-slate-300 mb-1">Naam</label><input type="text" x-model="accountForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">MT5 Login</label><input type="text" x-model="accountForm.mt5_login" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">MT5 Server</label><input type="text" x-model="accountForm.mt5_server" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Bridge IP</label><input type="text" x-model="accountForm.bridge_host" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Bridge Poort</label><input type="number" x-model="accountForm.bridge_port" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
+                    <button type="button" @click="showAccountModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white">Annuleren</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Strategy Modal -->
+<div x-show="showStrategyModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div x-show="showStrategyModal" @click="showStrategyModal = false" class="fixed inset-0 transition-opacity bg-black/70"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-petrol-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-petrol-700">
+            <form @submit.prevent="saveStrategy()">
+                <div class="px-6 pt-6 pb-4">
+                    <h3 class="text-lg font-medium text-white mb-4" x-text="strategyForm.id ? 'Strategie Bewerken' : 'Nieuwe Strategie Toevoegen'"></h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Naam</label><input type="text" x-model="strategyForm.name" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Account</label>
+                                <select x-model="strategyForm.account_id" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg">
+                                    <option value="">Kies een account...</option>
+                                    <template x-for="acc in accounts" :key="acc.id"><option :value="acc.id" x-text="acc.name"></option></template>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Plugin</label>
+                                <select x-model="strategyForm.params.plugin" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg">
+                                    <option value="macd_cross">MACD Cross</option>
+                                    <option value="dummy_strategy">Dummy (Test)</option>
+                                </select>
+                            </div>
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Symbol</label><input type="text" x-model="strategyForm.params.symbol" required class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Timeframe</label>
+                                <select x-model="strategyForm.params.timeframe" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg">
+                                    <option value="M1">M1</option><option value="M5">M5</option><option value="M15">M15</option><option value="M30">M30</option><option value="H1">H1</option><option value="H4">H4</option><option value="D1">D1</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="border-t border-petrol-700 pt-4 mt-4">
+                            <h4 class="text-sm font-medium text-petrol-300 mb-3">Parameters</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs text-slate-400 mb-1">Fast Period</label><input type="number" x-model="strategyForm.params.fast" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Slow Period</label><input type="number" x-model="strategyForm.params.slow" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Risk %</label><input type="number" step="0.1" x-model="strategyForm.params.risk_percent" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Max Volume (lot)</label><input type="number" step="0.1" x-model="strategyForm.params.max_volume" class="w-full bg-petrol-950 border border-petrol-700 text-white px-3 py-2 rounded-lg"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-petrol-900/50 px-6 py-4 flex justify-end gap-3">
+                    <button type="button" @click="showStrategyModal = false" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white">Annuleren</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 bg-petrol-500 hover:bg-petrol-400 text-white text-sm font-medium rounded-lg disabled:opacity-50" x-text="saving ? 'Opslaan...' : 'Opslaan'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
